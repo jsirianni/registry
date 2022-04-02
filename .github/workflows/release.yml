@@ -10,9 +10,7 @@ env:
 jobs:
   goreleaser:
     runs-on: ubuntu-20.04
-    permissions:
-      contents: read
-      packages: write
+    permissions: read-all|write-all
 
     steps:
       - name: Checkout
