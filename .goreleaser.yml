@@ -1,0 +1,90 @@
+before:
+  hooks:
+    - make tidy
+  
+builds:
+  - id: registry
+    env:
+      - CGO_ENABLED=0
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    goos:
+      - windows
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+      - arm
+    ignore:
+      - goos: windows
+        goarch: arm
+    ldflags:
+      - -s -w
+      - -X github.com/jsirianni/registry/main/version.version=v{{ .Version }}
+      - -X github.com/jsirianni/registry/main/version.gitHash={{ .FullCommit }}
+      - -X github.com/jsirianni/registry/main/version.date={{ .Date }}
+    no_unique_dist_dir: false
+
+archives:
+  - format: tar.gz
+    name_template: "{{ .ProjectName }}-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    files:
+      - LICENSE
+    format_overrides:
+      - goos: windows
+        format: zip
+
+nfpms:
+  - id: registry
+    file_name_template: "{{ .PackageName }}_{{ .Os }}_{{ .Arch }}"
+    maintainer: github.com/jsirianni
+    package_name: registry
+    homepage: https://github.com/jsirianni/registry
+    license: Apache 2.0
+    formats:
+      - rpm
+      - deb
+      - apk
+
+dockers:
+  - id: registry
+    goos: linux
+    goarch: amd64
+    ids:
+      - registry
+    image_templates:
+      - "jsirianni/registry:latest"
+      - "jsirianni/registry:{{ .Major }}.{{ .Minor }}.{{ .Patch }}"
+      - "jsirianni/registry:{{ .Major }}.{{ .Minor }}"
+      - "jsirianni/registry:{{ .Major }}"
+    dockerfile: ./Dockerfile
+    use: docker # could be podman in the future
+    build_flag_templates:
+      - "--label=created={{.Date}}"
+      - "--label=title={{.ProjectName}}"
+      - "--label=revision={{.FullCommit}}"
+      - "--label=version={{.Version}}"
+
+checksum:
+  name_template: "{{ .ProjectName }}-v{{ .Version }}-SHA256SUMS"
+  algorithm: sha256
+
+release:
+  draft: false
+
+changelog:
+  skip: false
+  use: github
+  sort: asc
+  groups:
+    - title: "New Features"
+      regexp: "^.*feat[(\\w)]*:+.*$"
+      order: 0
+    - title: "Bug Fixes"
+      regexp: "^.*fix[(\\w)]*:+.*$"
+      order: 10
+    - title: "Dependencies"
+      regexp: "^.*deps[(\\w)]*:+.*$"
+      order: 30
+    - title: Other
+      order: 999
