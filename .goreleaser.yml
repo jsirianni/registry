@@ -20,9 +20,9 @@ builds:
         goarch: arm
     ldflags:
       - -s -w
-      - -X github.com/jsirianni/registry/main/version.version=v{{ .Version }}
-      - -X github.com/jsirianni/registry/main/version.gitHash={{ .FullCommit }}
-      - -X github.com/jsirianni/registry/main/version.date={{ .Date }}
+      - -X github.com/jsirianni/registry/version.version=v{{ .Version }}
+      - -X github.com/jsirianni/registry/version.gitHash={{ .FullCommit }}
+      - -X github.com/jsirianni/registry/version.date={{ .Date }}
     no_unique_dist_dir: false
 
 archives:
