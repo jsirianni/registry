@@ -81,7 +81,7 @@ func (s *Server) versionHandler(w http.ResponseWriter, _ *http.Request) {
 	b, err := json.Marshal(v)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		s.logger.Errorf("failed to build version response: %w", err)
+		s.logger.Errorf("failed to build version response: %s", err)
 	}
 
 	w.Header().Add("Content-Type", "application/json")
