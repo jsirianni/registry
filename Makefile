@@ -82,3 +82,20 @@ for-all:
 	  	echo "running $${CMD} in $${dir}" && \
 	 	$${CMD} ); \
 	done
+
+.PHONY: start-test-integration-server
+start-test-integration-server:
+	bash example/scripts/generate-dev-certificates.sh
+	$(MAKE) build
+	sudo dist/registry_linux_amd64/registry \
+		--providers-dir server/testdata/providers \
+		--certificate example/scripts/tls/test.crt \
+		--private-key example/scripts/tls/test.key \
+		--port 443
+
+.PHONY: run-test-integration
+run-test-integration:
+	cd example && docker build . -t registry-client:latest
+	docker run -it \
+		--network host \
+		registry-client:latest init
