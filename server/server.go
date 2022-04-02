@@ -60,7 +60,7 @@ func New(options ...Option) *Server {
 	return s
 }
 
-// Server starts the web server
+// Serve starts the web server
 func (s *Server) Serve() error {
 	r := mux.NewRouter()
 	r.HandleFunc("/version", s.versionHandler)
@@ -76,7 +76,7 @@ func (s *Server) Serve() error {
 	return srv.ListenAndServe()
 }
 
-func (s *Server) versionHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) versionHandler(w http.ResponseWriter, _ *http.Request) {
 	v := version.BuildVersion()
 	b, err := json.Marshal(v)
 	if err != nil {

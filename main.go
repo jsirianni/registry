@@ -25,7 +25,7 @@ func main() {
 	logger.Info("starting server")
 	err := s.Serve()
 	if err != nil {
-		logger.Fatalf("server exited with error: %w", err)
+		logger.Fatalf("server exited with error: %s", err)
 	}
 	logger.Info("server exited cleanly, shutting down")
 }
