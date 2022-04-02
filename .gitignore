@@ -16,3 +16,6 @@
 
 **/dist
 registry
+
+# test tls certificates
+**/tls
