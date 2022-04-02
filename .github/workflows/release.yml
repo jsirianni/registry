@@ -3,6 +3,10 @@ on:
   push:
     tags:
       - 'v*'
+
+env:
+  REGISTRY: ghcr.io
+
 jobs:
   goreleaser:
     runs-on: ubuntu-20.04
