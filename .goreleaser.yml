@@ -10,14 +10,8 @@ builds:
     goos:
       - windows
       - linux
-      - darwin
     goarch:
       - amd64
-      - arm64
-      - arm
-    ignore:
-      - goos: windows
-        goarch: arm
     ldflags:
       - -s -w
       - -X github.com/jsirianni/registry/version.version=v{{ .Version }}
