@@ -1,0 +1,20 @@
+name: Lint
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  lint:
+    runs-on: "self-hosted"
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v2
+        
+      - name: Run Revive Linter
+        uses: docker://morphy/revive-action:v2
+        with:
+          config: .revive.toml
