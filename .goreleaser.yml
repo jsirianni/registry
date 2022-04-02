@@ -53,10 +53,10 @@ dockers:
     ids:
       - registry
     image_templates:
-      - "jsirianni/registry:latest"
-      - "jsirianni/registry:{{ .Major }}.{{ .Minor }}.{{ .Patch }}"
-      - "jsirianni/registry:{{ .Major }}.{{ .Minor }}"
-      - "jsirianni/registry:{{ .Major }}"
+      - "ghcr.io/jsirianni/registry:latest"
+      - "ghcr.io/jsirianni/registry:{{ .Major }}.{{ .Minor }}.{{ .Patch }}"
+      - "ghcr.io/jsirianni/registry:{{ .Major }}.{{ .Minor }}"
+      - "ghcr.io/jsirianni/registry:{{ .Major }}"
     dockerfile: ./Dockerfile
     use: docker # could be podman in the future
     build_flag_templates:
