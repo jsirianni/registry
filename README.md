@@ -1,0 +1,2 @@
+# registry
+Terraform Registry server
