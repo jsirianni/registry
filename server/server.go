@@ -95,6 +95,7 @@ func New(options ...Option) *Server {
 	return s
 }
 
+// Serve starts the API server
 func (s *Server) Serve() error {
 	version := version.BuildVersion()
 
