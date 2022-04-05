@@ -71,12 +71,15 @@ jobs:
           wget https://github.com/hairyhenderson/gomplate/releases/download/v3.9.0/gomplate_linux-amd64-slim
           chmod +x gomplate_linux-amd64-slim && mv gomplate_linux-amd64-slim gomplate
 
-      - name: Deploy
+      - name: Cluster Login
         run: |
           gcloud container clusters get-credentials $CLUSTER_NAME \
             --zone $CLUSTER_ZONE \
             --project $GCP_PROJECT
 
+      - name: Deploy
+        run: |
+          REF="${GITHUB_REF##*/}"
           TAG="${REF:1}"
           export IMAGE_TAG="${IMAGE}:${SHA}"
           ./gomplate --file deploy/k8s/deployment.gotmpl | kubectl apply -f -
@@ -88,4 +91,3 @@ jobs:
           IMAGE: ghcr.io/jsirianni/registry
           INGRESS_CLUSTER_ISSUER: ${{ secrets.INGRESS_CLUSTER_ISSUER }}
           INGRESS_HOSTNAME: ${{ secrets.INGRESS_HOSTNAME }}
-          REF: ${{ github.ref_name }}
