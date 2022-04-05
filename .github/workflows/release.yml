@@ -48,3 +48,43 @@ jobs:
           args: release --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy:
+    runs-on: ubuntu-20.04
+    needs: goreleaser
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install Gcloud SDK
+        uses: google-github-actions/setup-gcloud@master
+        with:
+          project_id: ${{ secrets.GCP_PROJECT }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          export_default_credentials: true
+
+      - name: Install kubectl
+        run: gcloud components install kubectl
+
+      - name: Install Gomplate
+        run: |
+          wget https://github.com/hairyhenderson/gomplate/releases/download/v3.9.0/gomplate_linux-amd64-slim
+          chmod +x gomplate_linux-amd64-slim && mv gomplate_linux-amd64-slim gomplate
+
+      - name: Deploy
+        run: |
+          gcloud container clusters get-credentials $CLUSTER_NAME \
+            --zone $CLUSTER_ZONE \
+            --project $GCP_PROJECT
+
+          TAG="${{{github.ref_name}}:1}"
+          export IMAGE_TAG="${IMAGE}:${SHA}"
+          ./gomplate --file deploy/k8s/deployment.gotmpl | kubectl apply -f -
+        env:
+          CLUSTER_NAME: ${{ secrets.CLUSTER_NAME }}
+          CLUSTER_ZONE: ${{ secrets.CLUSTER_ZONE }}
+          GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
+          NAMESPACE: ${{ secrets.NAMESPACE }}
+          IMAGE: ghcr.io/jsirianni/registry
+          INGRESS_CLUSTER_ISSUER: ${{ secrets.INGRESS_CLUSTER_ISSUER }}
+          INGRESS_HOSTNAME: ${{ secrets.INGRESS_HOSTNAME }}
