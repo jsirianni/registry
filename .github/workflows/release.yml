@@ -77,7 +77,7 @@ jobs:
             --zone $CLUSTER_ZONE \
             --project $GCP_PROJECT
 
-          TAG="${{{github.ref_name}}:1}"
+          TAG="${REF:1}"
           export IMAGE_TAG="${IMAGE}:${SHA}"
           ./gomplate --file deploy/k8s/deployment.gotmpl | kubectl apply -f -
         env:
@@ -88,3 +88,4 @@ jobs:
           IMAGE: ghcr.io/jsirianni/registry
           INGRESS_CLUSTER_ISSUER: ${{ secrets.INGRESS_CLUSTER_ISSUER }}
           INGRESS_HOSTNAME: ${{ secrets.INGRESS_HOSTNAME }}
+          REF: ${{ github.ref_name }}
