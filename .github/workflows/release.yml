@@ -76,6 +76,10 @@ jobs:
           gcloud container clusters get-credentials $CLUSTER_NAME \
             --zone $CLUSTER_ZONE \
             --project $GCP_PROJECT
+        env:
+          CLUSTER_NAME: ${{ secrets.CLUSTER_NAME }}
+          GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
+          CLUSTER_ZONE: ${{ secrets.CLUSTER_ZONE }}
 
       - name: Deploy
         run: |
@@ -84,9 +88,6 @@ jobs:
           export IMAGE_TAG="${IMAGE}:${SHA}"
           ./gomplate --file deploy/k8s/deployment.gotmpl | kubectl apply -f -
         env:
-          CLUSTER_NAME: ${{ secrets.CLUSTER_NAME }}
-          CLUSTER_ZONE: ${{ secrets.CLUSTER_ZONE }}
-          GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
           NAMESPACE: ${{ secrets.NAMESPACE }}
           IMAGE: ghcr.io/jsirianni/registry
           INGRESS_CLUSTER_ISSUER: ${{ secrets.INGRESS_CLUSTER_ISSUER }}
