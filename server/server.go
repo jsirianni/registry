@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/jsirianni/registry/model"
 	"github.com/jsirianni/registry/version"
 
-	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -95,32 +95,30 @@ func New(options ...Option) *Server {
 	return s
 }
 
-// Serve starts the web server
+// Serve starts the API server
 func (s *Server) Serve() error {
-	r := mux.NewRouter()
+	version := version.BuildVersion()
 
-	// health endpoint for healthchecks
-	r.HandleFunc("/health", s.healthHandler).Methods(http.MethodGet)
+	r := gin.Default()
 
-	// version endpoint returns the server's verion and build info
-	r.HandleFunc("/version", s.versionHandler).Methods(http.MethodGet)
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, nil)
+	})
 
-	// returns the server's supported resources
-	r.HandleFunc("/.well-known/terraform.json",
-		s.discoverHandler).Methods(http.MethodGet)
+	r.GET("/version", func(c *gin.Context) {
+		c.JSON(http.StatusOK, version)
+	})
 
-	// returns a given provider's versions
-	r.HandleFunc("/terraform/providers/v1/{namespace}/{name}/versions",
-		s.versionsHandler).Methods(http.MethodGet)
+	r.GET("/.well-known/terraform.json", func(c *gin.Context) {
+		m := map[string]string{
+			"providers.v1": "/terraform/providers/v1/",
+		}
+		c.JSON(http.StatusOK, m)
+	})
 
-	// returns information on how to download a given version
-	r.HandleFunc(
-		"/terraform/providers/v1/{namespace}/{name}/{version}/download/{os}/{arch}",
-		s.downloadHandler).Methods(http.MethodGet)
+	r.GET("/terraform/providers/v1/:namespace/:name/versions", s.versionsHandler)
 
-	//r.PathPrefix("/").HandlerFunc(s.catchAllHandler)
-
-	http.Handle("/", r)
+	r.GET("/terraform/providers/v1/:namespace/:name/:version/download/:os/:arch", s.downloadHandler)
 
 	srv := &http.Server{
 		Handler:      r,
@@ -137,77 +135,21 @@ func (s *Server) Serve() error {
 	return srv.ListenAndServe()
 }
 
-func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
-	// TODO: Validate that the server is happy and return 503 if not.
-	w.WriteHeader(http.StatusOK)
-	s.logger.Tracef("%d %s", http.StatusOK, r.URL.String())
-}
-
-func (s *Server) versionHandler(w http.ResponseWriter, r *http.Request) {
-	v := version.BuildVersion()
-	b, err := json.Marshal(v)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		s.logger.Errorf("failed to build version response: %s", err)
-		return
-	}
-
-	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, string(b))
-	s.logger.Tracef("%d %s", http.StatusOK, r.URL.String())
-}
-
-func (s *Server) discoverHandler(w http.ResponseWriter, r *http.Request) {
-	type discovery struct {
-		Providers string `json:"providers.v1"`
-	}
-
-	d := discovery{
-		Providers: "/terraform/providers/v1/",
-	}
-
-	b, err := json.Marshal(d)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		s.logger.Errorf("failed to build discovery response: %s", err)
-		return
-	}
-
-	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, string(b))
-	s.logger.Tracef("%d %s", http.StatusOK, r.URL.String())
-}
-
-func (s *Server) versionsHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-
-	namespace, ok := vars["namespace"]
-	if !ok {
-		w.WriteHeader(http.StatusBadRequest)
-		s.logger.Debugf("namespace not set %s", r.URL.String())
-		return
-	}
-
-	name, ok := vars["name"]
-	if !ok {
-		w.WriteHeader(http.StatusBadRequest)
-		s.logger.Debugf("name not set %s", r.URL.String())
-		return
-	}
+func (s *Server) versionsHandler(c *gin.Context) {
+	namespace := c.Param("namespace")
+	name := c.Param("name")
 
 	path := filepath.Join(s.providersDir, namespace, fmt.Sprintf("%s.json", name))
 	fileBytes, err := ioutil.ReadFile(path) // #nosec, used defined relative path based on url params
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		c.Status(http.StatusNotFound)
 		s.logger.Errorf("failed to open file for namespace %s and name %s: %s", namespace, name, err)
 		return
 	}
 
 	var providerVersions model.ProviderVersions
 	if err := json.Unmarshal(fileBytes, &providerVersions); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		c.Status(http.StatusInternalServerError)
 		s.logger.Errorf("failed to unmarhsal %s into type model.ProviderVersions: %s", path, err)
 		return
 	}
@@ -234,50 +176,29 @@ func (s *Server) versionsHandler(w http.ResponseWriter, r *http.Request) {
 	response := make(map[string][]model.Version)
 	response["versions"] = versions
 
-	b, err := json.Marshal(response)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		s.logger.Errorf("failed to marshal response: %s", err)
-		return
-	}
-
-	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, string(b))
-	s.logger.Tracef("%d %s", http.StatusOK, r.URL.String())
+	c.JSON(http.StatusOK, response)
 }
 
-func (s *Server) downloadHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-
-	for _, expect := range []string{"namespace", "name", "version", "os", "arch"} {
-		_, ok := vars[expect]
-		if !ok {
-			w.WriteHeader(http.StatusBadRequest)
-			s.logger.Debugf("%s not set %s", expect, r.URL.String())
-			return
-		}
-	}
-
-	namespace := vars["namespace"]
-	name := vars["name"]
-	version := vars["version"]
-	os := vars["os"]
-	arch := vars["arch"]
+func (s *Server) downloadHandler(c *gin.Context) {
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+	version := c.Param("version")
+	os := c.Param("os")
+	arch := c.Param("arch")
 
 	path := filepath.Join(s.providersDir, namespace, fmt.Sprintf("%s.json", name))
 	fileBytes, err := ioutil.ReadFile(path) // #nosec, used defined relative path based on url params
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		s.logger.Errorf("failed to open file for namespace %s and name %s: %s", namespace, name, err)
+		c.Status(http.StatusNotFound)
 		return
 	}
 
 	var providerVersions model.ProviderVersions
 	if err := json.Unmarshal(fileBytes, &providerVersions); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		c.Status(http.StatusInternalServerError)
 		s.logger.Errorf("failed to unmarhsal %s into type model.ProviderVersions: %s", path, err)
 		return
+
 	}
 
 	providerVersion := model.ProviderVersion{}
@@ -309,25 +230,8 @@ func (s *Server) downloadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !found {
-		w.WriteHeader(http.StatusNotFound)
-		s.logger.Debugf("failed to find provider %s for os %s and arch %s", name, os, arch)
+		c.Status(http.StatusNotFound)
 		return
 	}
-
-	b, err := json.Marshal(response)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		s.logger.Errorf("failed to marshal response: %s", err)
-		return
-	}
-
-	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, string(b))
-	s.logger.Tracef("%d %s", http.StatusOK, r.URL.String())
-}
-
-func (s *Server) catchAllHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-	s.logger.Tracef("%d %s", http.StatusNotImplemented, r.URL.String())
+	c.JSON(http.StatusOK, response)
 }
