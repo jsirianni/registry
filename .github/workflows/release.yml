@@ -85,7 +85,7 @@ jobs:
         run: |
           REF="${GITHUB_REF##*/}"
           TAG="${REF:1}"
-          export IMAGE_TAG="${IMAGE}:${SHA}"
+          export IMAGE_TAG="${IMAGE}:${TAG}"
           ./gomplate --file deploy/k8s/deployment.gotmpl | kubectl apply -f -
         env:
           NAMESPACE: ${{ secrets.NAMESPACE }}
