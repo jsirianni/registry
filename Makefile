@@ -1,6 +1,5 @@
 ALLDOC := $(shell find . \( -name "*.md" -o -name "*.yaml" \) \
                               -type f | sort)
-ALL_MODULES := $(shell find . -type f -name "go.mod" -exec dirname {} \; | sort )
 
 .PHONY: build
 build:
@@ -34,16 +33,12 @@ misspell-fix:
 
 .PHONY: test
 test:
-	$(MAKE) for-all CMD="go test -race ./..."
+	go test -cover -race ./...
 
 .PHONY: test-with-cover
 test-with-cover:
-	$(MAKE) for-all CMD="go test -race -coverprofile=cover.out ./..."
-	$(MAKE) for-all CMD="go tool cover -html=cover.out -o cover.html"
-
-.PHONY: bench
-bench:
-	$(MAKE) for-all CMD="go test -benchmem -run=^$$ -bench ^* ./..."
+	go test -race -coverprofile=cover.out ./...
+	go tool cover -html=cover.out -o cover.html
 
 .PHONY: check-fmt
 check-fmt:
@@ -55,7 +50,7 @@ fmt:
 
 .PHONY: tidy
 tidy:
-	$(MAKE) for-all CMD="go mod tidy -compat=1.18"
+	go mod tidy -compat=1.18
 
 .PHONY: gosec
 gosec:
@@ -72,16 +67,6 @@ release:
 .PHONY: release-test
 release-test:
 	goreleaser release --parallelism 4 --skip-validate --skip-publish --skip-sign --rm-dist --snapshot
-
-.PHONY: for-all
-for-all:
-	@echo "running $${CMD} in root"
-	@$${CMD}
-	@set -e; for dir in $(ALL_MODULES); do \
-	  (cd "$${dir}" && \
-	  	echo "running $${CMD} in $${dir}" && \
-	 	$${CMD} ); \
-	done
 
 .PHONY: start-test-integration-server
 start-test-integration-server:
