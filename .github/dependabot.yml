@@ -7,3 +7,14 @@ updates:
     commit-message:
       prefix: "deps"
       include: "scope"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+      - "continuous integration"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
