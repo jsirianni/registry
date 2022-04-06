@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"path/filepath"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jsirianni/registry/model"
+	"github.com/jsirianni/registry/store"
 	"github.com/jsirianni/registry/version"
 
 	log "github.com/sirupsen/logrus"
@@ -74,6 +74,14 @@ func WithListenAddress(listenAddr string) Option {
 	}
 }
 
+// WithMapStore configures the server's storage interface with
+// an in memory mapstore.
+func WithMapStore() Option {
+	return func(s *Server) {
+		s.store = store.NewMapStore()
+	}
+}
+
 // Server is the registry web server
 type Server struct {
 	logger       *log.Logger
@@ -82,6 +90,7 @@ type Server struct {
 	listenAddr   string
 	providersDir string
 	tls          *tls.Config
+	store        store.Store
 }
 
 // New takes a logger and returns a new Server
@@ -111,14 +120,14 @@ func (s *Server) Serve() error {
 
 	r.GET("/.well-known/terraform.json", func(c *gin.Context) {
 		m := map[string]string{
-			"providers.v1": "/terraform/providers/v1/",
+			"providers.v1": "/v1/",
 		}
 		c.JSON(http.StatusOK, m)
 	})
 
-	r.GET("/terraform/providers/v1/:namespace/:name/versions", s.versionsHandler)
-
-	r.GET("/terraform/providers/v1/:namespace/:name/:version/download/:os/:arch", s.downloadHandler)
+	r.PUT("/v1/:namespace/:name/versions", s.addVersions)
+	r.GET("/v1/:namespace/:name/versions", s.getVersions)
+	r.GET("/v1/:namespace/:name/:version/download/:os/:arch", s.downloadHandler)
 
 	srv := &http.Server{
 		Handler:      r,
@@ -135,22 +144,60 @@ func (s *Server) Serve() error {
 	return srv.ListenAndServe()
 }
 
-func (s *Server) versionsHandler(c *gin.Context) {
-	namespace := c.Param("namespace")
-	name := c.Param("name")
-
-	path := filepath.Join(s.providersDir, namespace, fmt.Sprintf("%s.json", name))
-	fileBytes, err := ioutil.ReadFile(path) // #nosec, used defined relative path based on url params
+// TODO: Require authentication via header key
+func (s *Server) addVersions(c *gin.Context) {
+	b, err := ioutil.ReadAll(c.Request.Body)
 	if err != nil {
-		c.Status(http.StatusNotFound)
-		s.logger.Errorf("failed to open file for namespace %s and name %s: %s", namespace, name, err)
+		// TODO: probably check if body is too big
+		c.JSON(http.StatusInternalServerError, nil)
 		return
 	}
 
-	var providerVersions model.ProviderVersions
-	if err := json.Unmarshal(fileBytes, &providerVersions); err != nil {
-		c.Status(http.StatusInternalServerError)
-		s.logger.Errorf("failed to unmarhsal %s into type model.ProviderVersions: %s", path, err)
+	var req model.ProviderVersion
+	if err := json.Unmarshal(b, &req); err != nil {
+		c.JSON(http.StatusBadRequest, nil)
+		return
+	}
+
+	if req.Version == "" {
+		c.JSON(http.StatusBadRequest, nil)
+		return
+	}
+
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+	key := fmt.Sprintf("%s-%s", namespace, name)
+
+	// Check for existing versions
+	versions := s.store.Read(key)
+	if versions == nil {
+		versions = &model.ProviderVersions{}
+	}
+
+	// Update and return
+	for i, version := range versions.Versions {
+		if version.Version == req.Version {
+			versions.Versions[i] = req
+			s.store.Write(key, *versions)
+			c.JSON(http.StatusOK, versions)
+			return
+		}
+	}
+
+	// New resource
+	versions.Versions = append(versions.Versions, req)
+	s.store.Write(key, *versions)
+	c.JSON(http.StatusAccepted, versions)
+}
+
+func (s *Server) getVersions(c *gin.Context) {
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+	key := fmt.Sprintf("%s-%s", namespace, name)
+
+	providerVersions := s.store.Read(key)
+	if providerVersions == nil {
+		c.JSON(http.StatusNotFound, nil)
 		return
 	}
 
@@ -182,24 +229,17 @@ func (s *Server) versionsHandler(c *gin.Context) {
 func (s *Server) downloadHandler(c *gin.Context) {
 	namespace := c.Param("namespace")
 	name := c.Param("name")
+	key := fmt.Sprintf("%s-%s", namespace, name)
+
+	providerVersions := s.store.Read(key)
+	if providerVersions == nil {
+		c.JSON(http.StatusNotFound, nil)
+		return
+	}
+
 	version := c.Param("version")
 	os := c.Param("os")
 	arch := c.Param("arch")
-
-	path := filepath.Join(s.providersDir, namespace, fmt.Sprintf("%s.json", name))
-	fileBytes, err := ioutil.ReadFile(path) // #nosec, used defined relative path based on url params
-	if err != nil {
-		c.Status(http.StatusNotFound)
-		return
-	}
-
-	var providerVersions model.ProviderVersions
-	if err := json.Unmarshal(fileBytes, &providerVersions); err != nil {
-		c.Status(http.StatusInternalServerError)
-		s.logger.Errorf("failed to unmarhsal %s into type model.ProviderVersions: %s", path, err)
-		return
-
-	}
 
 	providerVersion := model.ProviderVersion{}
 	for _, v := range providerVersions.Versions {
