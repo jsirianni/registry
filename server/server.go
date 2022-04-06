@@ -178,7 +178,12 @@ func (s *Server) addVersions(c *gin.Context) {
 	for i, version := range versions.Versions {
 		if version.Version == req.Version {
 			versions.Versions[i] = req
-			s.store.Write(key, *versions)
+			err := s.store.Write(key, *versions)
+			if err != nil {
+				c.JSON(http.StatusInsufficientStorage, err)
+				s.logger.Errorf("failed to write to storage backend: %s", err)
+				return
+			}
 			c.JSON(http.StatusOK, versions)
 			return
 		}
@@ -186,7 +191,11 @@ func (s *Server) addVersions(c *gin.Context) {
 
 	// New resource
 	versions.Versions = append(versions.Versions, req)
-	s.store.Write(key, *versions)
+	if err := s.store.Write(key, *versions); err != nil {
+		c.JSON(http.StatusInternalServerError, nil)
+		s.logger.Errorf("failed to write to storage backend: %s", err)
+		return
+	}
 	c.JSON(http.StatusAccepted, versions)
 }
 
