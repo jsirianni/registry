@@ -36,6 +36,7 @@ func main() {
 		server.WithWriteTimeout(time.Second*15),
 		server.WithListenAddress(fmt.Sprintf(":%d", *listenPort)),
 		server.WithTLS(*certificate, *privateKey),
+		server.WithMapStore(),
 	)
 
 	err := s.Serve()
