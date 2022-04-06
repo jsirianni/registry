@@ -19,3 +19,6 @@ registry
 
 # test tls certificates
 **/tls
+
+**/.terraform
+**/.terraform.lock.hcl
