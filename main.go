@@ -30,7 +30,7 @@ func main() {
 	logger.SetOutput(os.Stdout)
 	logger.SetLevel(log.TraceLevel)
 
-	const envSecretKey = "REGISTRY_CONFIG_SECRET_KEY"
+	const envSecretKey = "REGISTRY_CONFIG_SECRET_KEY" // #nosec: This is not a credential value
 
 	// If not set, check env
 	if *secretKey == "" {
