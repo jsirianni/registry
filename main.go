@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jsirianni/registry/server"
 
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
 )
@@ -21,7 +20,7 @@ func main() {
 	secretKey := flag.String("secret-key", "", "A UUID secret key, used for authenticating to the server")
 	flag.Parse()
 
-	logger := logrus.New()
+	logger := log.New()
 	logger.SetFormatter(&log.JSONFormatter{
 		FieldMap: log.FieldMap{
 			log.FieldKeyMsg:   "message",
