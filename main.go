@@ -39,7 +39,7 @@ func main() {
 	}
 
 	if *secretKey == "" {
-		logger.Error("flag --secret-key or environment %s is a required flag", envSecretKey)
+		logger.Errorf("flag --secret-key or environment %s is a required flag", envSecretKey)
 		os.Exit(1)
 	}
 
