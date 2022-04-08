@@ -92,3 +92,4 @@ jobs:
           IMAGE: ghcr.io/jsirianni/registry
           INGRESS_CLUSTER_ISSUER: ${{ secrets.INGRESS_CLUSTER_ISSUER }}
           INGRESS_HOSTNAME: ${{ secrets.INGRESS_HOSTNAME }}
+          REGISTRY_CONFIG_SECRET_KEY: ${{ secrets.REGISTRY_CONFIG_SECRET_KEY }}
