@@ -74,6 +74,11 @@ Provider versions should adhear to the following json structure:
         }
     ]
 }
-```json
+```
 
 </details>
+
+## Useful Docs
+
+- Terraform Provider Registry Protocol: https://www.terraform.io/internals/provider-registry-protocol
+- Building a Terraform Registry: https://hugomartins.io/essays/2021/01/build-a-terraform-private-registry/
