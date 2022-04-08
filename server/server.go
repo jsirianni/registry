@@ -8,11 +8,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/jsirianni/registry/model"
 	"github.com/jsirianni/registry/store"
 	"github.com/jsirianni/registry/version"
 
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -82,6 +83,14 @@ func WithMapStore() Option {
 	}
 }
 
+// WithSecretKey configures the server's secret key, used for
+// client authentication
+func WithSecretKey(uuid uuid.UUID) Option {
+	return func(s *Server) {
+		s.secretKey = uuid
+	}
+}
+
 // Server is the registry web server
 type Server struct {
 	logger       *log.Logger
@@ -91,6 +100,7 @@ type Server struct {
 	providersDir string
 	tls          *tls.Config
 	store        store.Store
+	secretKey    uuid.UUID
 }
 
 // New takes a logger and returns a new Server
@@ -146,6 +156,18 @@ func (s *Server) Serve() error {
 
 // TODO: Require authentication via header key
 func (s *Server) addVersions(c *gin.Context) {
+	// TODO: Break auth handling into middleware
+	const authHeader = "X-Secret-Key"
+	auth := c.Request.Header.Get(authHeader)
+	if auth == "" {
+		c.JSON(http.StatusNetworkAuthenticationRequired, nil)
+		return
+	}
+	if s.secretKey.String() != auth {
+		c.JSON(http.StatusUnauthorized, nil)
+		return
+	}
+
 	b, err := ioutil.ReadAll(c.Request.Body)
 	if err != nil {
 		// TODO: probably check if body is too big
