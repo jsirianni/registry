@@ -30,8 +30,16 @@ func main() {
 	logger.SetOutput(os.Stdout)
 	logger.SetLevel(log.TraceLevel)
 
+	const envSecretKey = "REGISTRY_CONFIG_SECRET_KEY"
+
+	// If not set, check env
 	if *secretKey == "" {
-		logger.Error("--secret-key is a required flag")
+		x := os.Getenv(envSecretKey)
+		secretKey = &x
+	}
+
+	if *secretKey == "" {
+		logger.Error("flag --secret-key or environment %s is a required flag", envSecretKey)
 		os.Exit(1)
 	}
 
