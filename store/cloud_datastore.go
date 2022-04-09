@@ -15,8 +15,15 @@ func NewDatastore(entityKind string) (*Datastore, error) {
 		return nil, errors.New("entityKind cannot be empty")
 	}
 
+	// TODO: Project is detected at runtime by the Google SDK. This means
+	// registry can only run within a GCE / GKE environment. We could expose
+	// this parameter to allow registry to run with Cloud Datastore outside
+	// of Google Cloud.
+	// Settign GOOGLE_APPLICATION_CREDENTIALS is not enough to detect the project.
+	projectID := ""
+
 	ctx := context.Background()
-	c, err := datastore.NewClient(ctx, "")
+	c, err := datastore.NewClient(ctx, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to configure cloud datastore: %s", err)
 	}
