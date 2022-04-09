@@ -18,19 +18,21 @@ import (
 )
 
 // Option is a function that configures a server option
-type Option func(*Server)
+type Option func(*Server) error
 
 // WithLogger configures the server's logger
 func WithLogger(logger *log.Logger) Option {
-	return func(s *Server) {
+	return func(s *Server) error {
 		s.logger = logger
+		return nil
 	}
 }
 
 // WithProvidersDir configures the server's logger
 func WithProvidersDir(dir string) Option {
-	return func(s *Server) {
+	return func(s *Server) error {
 		s.providersDir = dir
+		return nil
 	}
 }
 
@@ -41,53 +43,73 @@ func WithTLS(crt, key string) Option {
 		return nil
 	}
 
-	return func(s *Server) {
+	return func(s *Server) error {
 		c, err := tls.LoadX509KeyPair(crt, key)
 		if err != nil {
-			panic(fmt.Sprintf("failed to load tls keypair: %s", err))
+			return fmt.Errorf("failed to load tls keypair: %v", err)
 		}
 
 		s.tls = &tls.Config{
 			Certificates: []tls.Certificate{c},
 			MinVersion:   tls.VersionTLS12,
 		}
+
+		return nil
 	}
 }
 
 // WithWriteTimeout configures the server's write timeout
 func WithWriteTimeout(timeout time.Duration) Option {
-	return func(s *Server) {
+	return func(s *Server) error {
 		s.writeTimeout = timeout
+		return nil
 	}
 }
 
 // WithReadTimeout configures the server's read timeout
 func WithReadTimeout(timeout time.Duration) Option {
-	return func(s *Server) {
+	return func(s *Server) error {
 		s.readTimeout = timeout
+		return nil
 	}
 }
 
 // WithListenAddress configures the server's listen address
 func WithListenAddress(listenAddr string) Option {
-	return func(s *Server) {
+	return func(s *Server) error {
 		s.listenAddr = listenAddr
+		return nil
 	}
 }
 
 // WithMapStore configures the server's storage interface with
 // an in memory mapstore.
 func WithMapStore() Option {
-	return func(s *Server) {
-		s.store = store.NewMapStore()
+	return func(s *Server) error {
+		s.store = store.NewMap()
+		return nil
+	}
+}
+
+// WithCloudDatastore configures the server's storage interface with
+// Google Cloud Datastore.
+func WithCloudDatastore(entityKind string) Option {
+	return func(s *Server) error {
+		datastore, err := store.NewDatastore(entityKind)
+		if err != nil {
+			return err
+		}
+		s.store = datastore
+		return nil
 	}
 }
 
 // WithSecretKey configures the server's secret key, used for
 // client authentication
 func WithSecretKey(uuid uuid.UUID) Option {
-	return func(s *Server) {
+	return func(s *Server) error {
 		s.secretKey = uuid
+		return nil
 	}
 }
 
@@ -104,14 +126,16 @@ type Server struct {
 }
 
 // New takes a logger and returns a new Server
-func New(options ...Option) *Server {
+func New(options ...Option) (*Server, error) {
 	s := &Server{}
 	for _, opt := range options {
 		if opt != nil {
-			opt(s)
+			if err := opt(s); err != nil {
+				return nil, err
+			}
 		}
 	}
-	return s
+	return s, nil
 }
 
 // Serve starts the API server
@@ -191,7 +215,12 @@ func (s *Server) addVersions(c *gin.Context) {
 	key := fmt.Sprintf("%s-%s", namespace, name)
 
 	// Check for existing versions
-	versions := s.store.Read(key)
+	versions, err := s.store.Read(key)
+	if err != nil {
+		s.logger.Errorf("failed to read from storage backend: %s", err)
+		c.JSON(http.StatusInternalServerError, nil)
+		return
+	}
 	if versions == nil {
 		versions = &model.ProviderVersions{}
 	}
@@ -226,7 +255,12 @@ func (s *Server) getVersions(c *gin.Context) {
 	name := c.Param("name")
 	key := fmt.Sprintf("%s-%s", namespace, name)
 
-	providerVersions := s.store.Read(key)
+	providerVersions, err := s.store.Read(key)
+	if err != nil {
+		s.logger.Errorf("failed to read from storage backend: %s", err)
+		c.JSON(http.StatusInternalServerError, nil)
+		return
+	}
 	if providerVersions == nil {
 		c.JSON(http.StatusNotFound, nil)
 		return
@@ -262,7 +296,12 @@ func (s *Server) downloadHandler(c *gin.Context) {
 	name := c.Param("name")
 	key := fmt.Sprintf("%s-%s", namespace, name)
 
-	providerVersions := s.store.Read(key)
+	providerVersions, err := s.store.Read(key)
+	if err != nil {
+		s.logger.Errorf("failed to read from storage backend: %s", err)
+		c.JSON(http.StatusInternalServerError, nil)
+		return
+	}
 	if providerVersions == nil {
 		c.JSON(http.StatusNotFound, nil)
 		return

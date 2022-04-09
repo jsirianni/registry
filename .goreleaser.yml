@@ -4,6 +4,7 @@ before:
   
 builds:
   - id: registry
+    dir: cmd/registry
     env:
       - CGO_ENABLED=0
     mod_timestamp: "{{ .CommitTimestamp }}"
