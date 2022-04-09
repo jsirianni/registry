@@ -45,6 +45,8 @@ spec:
         env:
         - name: REGISTRY_CONFIG_SECRET_KEY
           value: {{.Env.REGISTRY_CONFIG_SECRET_KEY}}
+        - name: REGISTRY_CONFIG_STORAGE_TYPE
+          value: {{.Env.REGISTRY_CONFIG_STORAGE_TYPE}}
         resources:
           requests:
             cpu: 10m
