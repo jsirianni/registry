@@ -9,10 +9,10 @@ builds:
       - CGO_ENABLED=0
     mod_timestamp: "{{ .CommitTimestamp }}"
     goos:
-      - windows
       - linux
     goarch:
       - amd64
+      - arm64
     ldflags:
       - -s -w
       - -X github.com/jsirianni/registry/version.version=v{{ .Version }}
@@ -42,23 +42,66 @@ nfpms:
       - apk
 
 dockers:
-  - id: registry
-    goos: linux
+  - goos: linux
     goarch: amd64
     ids:
       - registry
     image_templates:
-      - "ghcr.io/jsirianni/registry:latest"
-      - "ghcr.io/jsirianni/registry:{{ .Major }}.{{ .Minor }}.{{ .Patch }}"
-      - "ghcr.io/jsirianni/registry:{{ .Major }}.{{ .Minor }}"
-      - "ghcr.io/jsirianni/registry:{{ .Major }}"
+      - "ghcr.io/jsirianni/registry-amd64:latest"
+      - "ghcr.io/jsirianni/registry-amd64:{{ .Major }}.{{ .Minor }}.{{ .Patch }}"
+      - "ghcr.io/jsirianni/registry-amd64:{{ .Major }}.{{ .Minor }}"
+      - "ghcr.io/jsirianni/registry-amd64:{{ .Major }}"
+      - "ghcr.io/jsirianni/registry-amd64:{{ .ShortCommit }}"
     dockerfile: ./Dockerfile
-    use: docker # could be podman in the future
+    use: buildx
     build_flag_templates:
       - "--label=created={{.Date}}"
       - "--label=title={{.ProjectName}}"
       - "--label=revision={{.FullCommit}}"
       - "--label=version={{.Version}}"
+  - goos: linux
+    goarch: arm64
+    ids:
+      - registry
+    image_templates:
+      - "ghcr.io/jsirianni/registry-arm64:latest"
+      - "ghcr.io/jsirianni/registry-arm64:{{ .Major }}.{{ .Minor }}.{{ .Patch }}"
+      - "ghcr.io/jsirianni/registry-arm64:{{ .Major }}.{{ .Minor }}"
+      - "ghcr.io/jsirianni/registry-arm64:{{ .Major }}"
+      - "ghcr.io/jsirianni/registry-arm64:{{ .ShortCommit }}"
+    dockerfile: ./Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--label=created={{.Date}}"
+      - "--label=title={{.ProjectName}}"
+      - "--label=revision={{.FullCommit}}"
+      - "--label=version={{.Version}}"
+
+docker_manifests:
+  - name_template: "ghcr.io/jsirianni/registry:latest"
+    image_templates:
+      - "ghcr.io/jsirianni/registry-amd64:latest"
+      - "ghcr.io/jsirianni/registry-arm64:latest"
+    skip_push: false
+  - name_template: "ghcr.io/jsirianni/registry:{{ .Major }}.{{ .Minor }}.{{ .Patch }}"
+    image_templates:
+      - "ghcr.io/jsirianni/registry-amd64:{{ .Major }}.{{ .Minor }}.{{ .Patch }}"
+      - "ghcr.io/jsirianni/registry-arm64:{{ .Major }}.{{ .Minor }}.{{ .Patch }}"
+    skip_push: false
+  - name_template: "ghcr.io/jsirianni/registry:{{ .Major }}.{{ .Minor }}"
+    image_templates:
+      - "ghcr.io/jsirianni/registry-amd64:{{ .Major }}.{{ .Minor }}"
+      - "ghcr.io/jsirianni/registry-arm64:{{ .Major }}.{{ .Minor }}"
+    skip_push: false
+  - name_template: "ghcr.io/jsirianni/registry:{{ .Major }}"
+    image_templates:
+      - "ghcr.io/jsirianni/registry-amd64:{{ .Major }}"
+      - "ghcr.io/jsirianni/registry-arm64:{{ .Major }}"
+    skip_push: false
+  - name_template: "ghcr.io/jsirianni/registry:{{ .ShortCommit }}"
+    image_templates:
+      - "ghcr.io/jsirianni/registry-amd64:{{ .ShortCommit }}"
+      - "ghcr.io/jsirianni/registry-arm64:{{ .ShortCommit }}"
 
 checksum:
   name_template: "{{ .ProjectName }}-v{{ .Version }}-SHA256SUMS"
