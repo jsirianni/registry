@@ -49,6 +49,10 @@ fmt:
 tidy:
 	go mod tidy -compat=1.18
 
+.PHONY: gomoddownload
+gomoddownload:
+	go mod download
+
 .PHONY: gosec
 gosec:
 	gosec ./...
