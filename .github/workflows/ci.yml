@@ -200,12 +200,6 @@ jobs:
     runs-on: "ubuntu-20.04"
     needs:
       - setup-environment
-      - lint
-      - secure
-      - vet
-      - test
-      - check-fmt
-      - misspell
     steps:
       - name: Check out source code
         uses: actions/checkout@v3
