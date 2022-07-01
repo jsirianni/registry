@@ -71,8 +71,6 @@ jobs:
         with:
           path: /home/runner/go/pkg/mod
           key: go-pkg-mod-${{ runner.os }}-${{ hashFiles('**/go.mod', '**/go.sum') }}
-      - name: Prep UI Dir
-        run: make prep
       - name: Vet
         run: GOOS=${{ matrix.goos }} go vet ./...
 
