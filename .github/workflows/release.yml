@@ -85,6 +85,7 @@ jobs:
         run: |
           REF="${GITHUB_REF##*/}"
           TAG="${REF:1}"
+          echo "Setting tag as: ${TAG}"
           export IMAGE_TAG="${IMAGE}:${TAG}"
           ./gomplate --file deploy/k8s/deployment.gotmpl | kubectl apply -f -
         env:
