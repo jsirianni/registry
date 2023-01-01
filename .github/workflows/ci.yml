@@ -222,7 +222,7 @@ jobs:
           path: /home/runner/go/bin
           key: tooling-${{ runner.os }}-${{ hashFiles('./internal/tools/go.mod') }}
       - name: Test GoReleaser
-        uses: goreleaser/goreleaser-action@v3
+        uses: goreleaser/goreleaser-action@v4
         with:
           version: v1.9.0
           args: release --skip-publish --rm-dist
